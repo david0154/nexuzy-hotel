@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  # NEX Hotel API Backend
+  api:
+    build:
+      context: ../api
+      dockerfile: ../deployment/Dockerfile.api
+    container_name: nex-hotel-api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../api:/app
+      - ../nexuzy_hotel.db:/app/nexuzy_hotel.db
+    environment:
+      - JWT_SECRET_KEY=change-this-in-production-2026
+      - DB_PATH=/app/nexuzy_hotel.db
+    restart: unless-stopped
+    networks:
+      - nex-network
+
+  # PHP Website
+  web:
+    build:
+      context: ../php_website
+      dockerfile: ../deployment/Dockerfile.web
+    container_name: nex-hotel-web
+    ports:
+      - "80:80"
+    volumes:
+      - ../php_website:/var/www/html
+    depends_on:
+      - api
+    restart: unless-stopped
+    networks:
+      - nex-network
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: nex-hotel-nginx
+    ports:
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - api
+      - web
+    restart: unless-stopped
+    networks:
+      - nex-network
+
+networks:
+  nex-network:
+    driver: bridge
+
+volumes:
+  database:
+    driver: local
